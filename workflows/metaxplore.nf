@@ -53,7 +53,6 @@ ch_multiqc_custom_methods_description = params.multiqc_methods_description ? fil
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
 include { INPUT_CHECK                  } from '../subworkflows/local/input_check'
-include { PAVIAN_INDIVIDUAL as PAVIAN  } from '../subworkflows/local/pavian'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -182,11 +181,9 @@ workflow METAXPLORE {
     }
     
     // 
-    // SUBWORKFLOW: Visualize the classification reports with Pavian
+    // SUBWORKFLOW: Visualize the classification reports with Krona
     //
-    //PAVIAN (
 
-    //)
 
     CUSTOM_DUMPSOFTWAREVERSIONS (
         ch_versions.unique().collectFile(name: 'collated_versions.yml')
