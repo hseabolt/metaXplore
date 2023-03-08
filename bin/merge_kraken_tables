@@ -1,0 +1,157 @@
+#!/usr/bin/perl
+
+# merge_kraken_tables.pl v0.1.0
+# Author: MH Seabolt
+# Last updated: 8-25-2021
+
+# SYNOPSIS:
+# Accepts a list of Kraken2 output tables generated using the setting --use_mpa_names.
+# Parses and returns a table with rows as taxa and columns as samples.
+
+##################################################################################
+# The MIT License
+#
+# Copyright (c) 2021 Matthew H. Seabolt
+#
+# Permission is hereby granted, free of charge, 
+# to any person obtaining a copy of this software and 
+# associated documentation files (the "Software"), to 
+# deal in the Software without restriction, including 
+# without limitation the rights to use, copy, modify, 
+# merge, publish, distribute, sublicense, and/or sell 
+# copies of the Software, and to permit persons to whom 
+# the Software is furnished to do so, 
+# subject to the following conditions:
+#
+# The above copyright notice and this permission notice 
+# shall be included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR 
+# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##################################################################################
+
+use strict;
+use warnings;
+use Getopt::Long qw(GetOptions);
+use File::Basename;
+
+# Required input parameters
+my $input = "--";
+my $output = "--";
+my $heirarchy; 
+my $pretty_print;
+
+sub usage {
+	my $usage = "merge_kraken_tables.pl\n
+	PURPOSE: Accepts a list of Kraken2 output tables generated using the setting --use_mpa_names.  Parses and returns a table with rows as taxa and columns as samples.
+			
+	USAGE:	merge_kraken_tables.pl -i mpa_files.list -o mpa.data.tab
+	-i	LIST of input kraken output files, expecting data from --use-mpa-style setting.
+	-h	STR; taxonomic heirarchy to filter extraneous information on? [ Default: species ]
+	-p 	INT flag; format the OTU names prettily? [ Default: OFF ]
+	-o 	output file name
+	\n";
+	print $usage;
+}
+
+GetOptions(	'input|i=s' => \$input,
+			'heirarchy|h=s' => \$heirarchy,
+			'pretty|p=i' => \$pretty_print,
+			'out|o=s' => \$output,
+) or die usage();
+
+# Parameter Setups
+my %Tax = ( "domain" => 0, "kingdom" => 1, "phylum" => 2, "class" => 3, "order" => 4, "family" => 5, "genus" => 6, "species" => 7, "all" => 8 );
+$heirarchy = ( $heirarchy && exists $Tax{$heirarchy} )? $heirarchy : "species";
+$pretty_print = ( $pretty_print && $pretty_print == 1 )? 1 : 0;
+
+##################################################################################
+# Read the txt file from Kraken, expecting the --use-mpa-style report
+my $fh = *STDIN;
+my $succin = open(LIST, "<", "$input") if ( $input ne "--" && -e $input );
+$fh = *LIST if ( $succin ); 
+
+# This is just a hash table of indices for each heirarchy since Kraken doesnt always include all of them per line
+my %Idx = ( "d" => 0, "k" => 1, "p" => 2, "c" => 3, "o" => 4, "f" => 5, "g" => 6, "s" => 7 );
+
+# Retrieve and separate the header lines from the data
+my %Taxa = ();
+my @taxnames;
+my @filenames;
+my $l=0;			# Just a line number counter
+while ( <$fh> )	{
+	chomp $_;
+	
+	# Open the given file, read the data
+	open(KRAKEN, "<", "$_") or warn "--> merge_kraken_tables.pl WARNING:: Cannot open file $_, which doesn't appear to exist!\n!";
+		my @data = <KRAKEN>;
+	close KRAKEN;
+	
+	# Remove the .txt file extension and save off the filename
+	my $filename = $_; $filename =~s/\.[^.]+$//;		# Removes extensions
+	push @filenames, $filename;
+	
+	# Parse the data
+	foreach my $line ( @data )	{
+		chomp $line;
+			
+		# The data lines begin with a taxonomic classification, which for Kraken, always begins with domain ("d__")
+		# Header lines beginning with # are ignored currently.
+		if ( $line =~ /^d__/ || $line =~ /unclassified/ )	{
+
+			# Split the line on tabs and separate out the data we want
+			my @line = split("\t", $line);
+			my ( $taxnames, $read_count ) = ( $line[0], $line[1] );
+			my @clade = split(/\|/, $taxnames);
+			$clade[-1] =~ /(^[dkpcofgs])/; my $index = $Idx{$1};
+			if ( $pretty_print == 1 ) 	{	$_ =~ s/^[dkpcofgs]__// foreach (@clade);	}
+			
+			# If we have a line with the requested taxonomic heirarchy identified,
+			# Then calculate some additional metrics:
+			if ( $index == $Tax{$heirarchy} || $clade[0] =~ /^unclassified/ || $heirarchy eq "all" )		{
+				
+				# Add the taxnames to a list
+				$clade[-1] =~ s/ /_/g;		# Convert any space characters to underscores
+				push @taxnames, $clade[-1] if ( not exists $Taxa{$clade[-1]} );
+				
+				# Add the data to the %Taxa hash for lookup later
+				# Here we add the read count to the index in an anonymous list in the order of the files as they are processed.
+				# This way, when we go to print, we will fill in empty elements with 0 because they didnt exist in that file.
+				if ( $pretty_print == 1 )	{	$Taxa{$clade[-1]}->[$l] = $read_count;	}
+				else 						{	$Taxa{$taxnames}->[$l]  = $read_count;	}
+			}
+		}
+	}
+	
+	# Increment the line number (corresponds to the order of files being input)
+	$l++;
+}
+close LIST if ( $succin );
+
+##################################################################################
+# No further calculation to do here, move on to print
+
+##################################################################################
+# Print the output
+my $succout = open( OUT, ">", "$output" ) if $output ne "--";
+my $fhout;
+if ( $succout )		{	$fhout = *OUT;		}
+else				{	$fhout = *STDOUT;	}
+print $fhout "clade_name\t", join("\t", @filenames), "\n";
+
+# Double loop to print the 2-D hash
+foreach my $key ( sort keys %Taxa )	{
+	my @row;
+	for ( my $i=0; $i < scalar @filenames; $i++ )		{
+		if ( $Taxa{$key}->[$i] )	{	$row[$i] = $Taxa{$key}->[$i];		}
+		else						{	$row[$i] = 0;						}
+	}
+	print $fhout "$key\t", join("\t", @row), "\n";
+}
+close $fhout if ( $succout );
+exit;

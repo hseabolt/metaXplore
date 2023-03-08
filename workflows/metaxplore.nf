@@ -53,6 +53,8 @@ include { METAPHLAN3_METAPHLAN3 as METAPHLAN3                } from '../modules/
 include { METAPHLAN3_MERGEMETAPHLANTABLES as MERGEMPATABLES  } from '../modules/nf-core/metaphlan3/mergemetaphlantables/main'
 include { MPA2KRAKEN                                         } from '../modules/local/mpa2kraken'
 include { NONPAREIL                                          } from '../modules/local/nonpareil'
+include { CREATE_NONPAREIL_SAMPLESHEET                       } from '../modules/local/create_nonpareil_samplesheet'
+include { NONPAREIL_CURVES                                   } from '../modules/local/nonpareil_curves'
 include { KRONA_DB                                           } from '../modules/local/krona_db'
 include { KRONA                                              } from '../modules/local/krona'
 include { CUSTOM_DUMPSOFTWAREVERSIONS                        } from '../modules/nf-core/custom/dumpsoftwareversions/main'
@@ -126,6 +128,13 @@ workflow METAXPLORE {
         ch_reads_for_np
     )
     ch_versions = ch_versions.mix(NONPAREIL.out.versions)
+    CREATE_NONPAREIL_SAMPLESHEET (
+        NONPAREIL.out.npo, "$baseDir/assets/Rcolors.txt"
+    )
+    ch_np_samplesheet = CREATE_NONPAREIL_SAMPLESHEET.out.samplesheet.collectFile(name: 'np.samplesheet.txt', newLine: true)
+    NONPAREIL_CURVES (
+        ch_np_samplesheet
+    )
 
     //
     // Classify trimmed reads with classifier of choice (by default: Kraken2)
