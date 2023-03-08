@@ -1,0 +1,245 @@
+#!/usr/bin/env perl
+
+# mpa2kraken v0.1.0
+# Author: MH Seabolt
+# Last updated: 5-16-2022
+
+# SYNOPSIS:
+# Accepts a Metaphlan output report from the setting rel_ab or rel_ab_w_read_counts.
+# Parses and returns a Kraken2-style output format.
+
+##################################################################################
+# The MIT License
+#
+# Copyright (c) 2022 Matthew H. Seabolt
+#
+# Permission is hereby granted, free of charge, 
+# to any person obtaining a copy of this software and 
+# associated documentation files (the "Software"), to 
+# deal in the Software without restriction, including 
+# without limitation the rights to use, copy, modify, 
+# merge, publish, distribute, sublicense, and/or sell 
+# copies of the Software, and to permit persons to whom 
+# the Software is furnished to do so, 
+# subject to the following conditions:
+#
+# The above copyright notice and this permission notice 
+# shall be included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR 
+# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##################################################################################
+
+use strict;
+use warnings;
+use Getopt::Long qw(GetOptions);
+use Data::Dumper;
+
+# Required input parameters
+# Required input parameters
+my $input = "--";
+my $output = "--";
+my $version;
+my $help;
+
+sub usage {
+	my $usage = "mpa2kraken v0.1.0\n
+	PURPOSE: Accepts a Metaphlan output report from the setting rel_ab or rel_ab_w_read_counts.  Parses and returns a Kraken2-style output format.
+			
+	USAGE:	mpa2kraken -i <sample.mpareport> -o <sample.kreport>
+	
+	INPUT/OUTPUT:
+	-i | --input		STR; input filename, expecting MetaPhlAn3 format (can be from -t rel_ab or rel_ab_w_read_counts)
+	-o | --output		STR; output filename
+	-v | --version	 	Print version number and exit.
+	-h | --help		Print this help message and exit.
+	
+	\n";
+	print $usage;
+}
+
+GetOptions(	'input|i=s'    => \$input,
+			'output|o=s'    => \$output,
+			'version|v'  => \$version,
+			'help|h'     => \$help,
+) or die usage();
+
+# Print the version number or the help message and exit if -v or -h is activated
+if ( $version ) 	{ die "mpa2kraken v0.1.0\n"; 		}
+if ( $help    )     { die usage();		 						}
+
+# Set up a table for the number of indented spaces to print --> note this is specifically tuned for how MetaPhlan writes it's taxonomic levels
+#   and may require some occassional maintainance should the Metaphlan developers ever decide to change their report formats
+my %Spaces = ( "U" => 0, "R" => 0, "K" => 2, "P" => 4, "C" => 6, "O" => 8, "F" => 10, "G" => 12, "S" => 14 );
+
+##################################################################################
+# Open input and output file handles for reading incoming data and writing data out
+my $fh = *STDIN;
+my $succin = open(MPA, "<", "$input") if ( $input ne "--" && -e $input );
+$fh = *MPA if ( $succin ); 
+
+my $succout = open( OUT, ">", "$output" ) if $output ne "--";
+my $fhout;
+if ( $succout )		{	$fhout = *OUT;		}
+else				{	$fhout = *STDOUT;	}
+
+##################################################################################
+# Parse the data and concurrently write out the line in Kraken2 format
+my $total_reads_mapped = 0;
+my %Taxa = ();
+my %Ids = ();
+my %Reads = ();
+my %Hierarchies = ();
+while ( <$fh> )	{
+	chomp $_;
+	
+	# Skip header lines, with one exception which contains the total estimated number of reads mapped
+	if ( $_ =~ /^#/ )	{
+		if ( $_ =~ /estimated_reads_mapped_to_known_clades:/ )	{
+			$total_reads_mapped = $_;
+			$total_reads_mapped =~ s/#estimated_reads_mapped_to_known_clades://;
+			next;
+		}
+		else 	{
+			next;
+		}
+	}
+	
+	# Begin to parse the main data bloc
+	my @otu = split("\t", $_);
+	my $taxnames = "";
+	my $taxids = ""; 
+	my $rel_ab = 0;
+	my $coverage = 0;
+	my $total_reads_rooted = 0;
+	my $total_reads_at_clade = 0;
+	my $hierarchy = "U";
+	my $taxid = 0;
+	my $name = "unclassified";
+	my $parent = "root";
+	my $parent_id = 1;
+	
+	# Assume here that the mpa report is from rel_ab_w_read_counts analysis
+	if ( scalar @otu == 5 ) 	{
+		( $taxnames, $taxids, $rel_ab, $coverage, $total_reads_at_clade ) = ( $otu[0], $otu[1], $otu[2], $otu[3], $otu[4] );
+	}
+	# Otherwise assume mpa was run with -t rel_ab, and estimate the number of reads that wouldve mapped to this taxon
+	else 	{
+		( $taxnames, $taxids, $rel_ab, $coverage, $total_reads_at_clade ) = ( $otu[0], $otu[1], $otu[2], $otu[3], 0 );
+	}
+	
+	# Special case: the UNKNOWN (unclassified) line, which *should* be the first line of data
+	if ( $otu[0] =~ /^UNKNOWN/ || $otu[0] =~ /^unclassified/ )	{
+		
+		# Update the total reads variable
+		$Reads{"all"} = $total_reads_mapped + $total_reads_at_clade;
+		
+		# Print the unclassified line
+		$rel_ab = 100*($total_reads_at_clade / $Reads{"all"});
+		print $fhout " ", join("\t", sprintf("%3.2f", $rel_ab), $total_reads_at_clade, $total_reads_at_clade, $hierarchy, $taxid, $name), "\n";
+		
+		# Initialize the root node in %Taxa
+		$Taxa{"root"} = [ ];
+		$Ids{"root"} = 1;
+		$Reads{"root"} = $total_reads_mapped;
+		
+		# We're done here, skip to the next line :)
+		next;
+	}
+
+	# Split $taxnames and $taxids to grab the terminal OTU name/taxid
+	my @name_list = split(/\|/, $taxnames);
+	unshift @name_list, "r__root";
+	$name_list[-1] =~ /([a-z])__(.*)/;
+	( $hierarchy, $name ) = ( uc $1, $2 );
+	$Hierarchies{$name} = $hierarchy;
+	$Reads{$name} = $total_reads_at_clade;
+	
+	# Now split $taxids like we did above and grab the last taxid in the list
+	my @id_list = split(/\|/, $taxids);
+	unshift @id_list, "1";
+	$Ids{$name} =  $id_list[-1];
+	
+	# Construct two concurrent adjacency lists from the taxonomic hierarchy strings
+	for ( my $i=0; $i < scalar @name_list; $i++ )	{
+		my $node = $name_list[$i];
+		my $id = $id_list[$i];
+		$node =~ /([a-z])__(.*)/;
+		my ( $otu_hierarchy, $otu_name ) = ( uc $1, $2 );
+		
+		# Record the taxid,taxonomic heirarchy, and read count of the given node
+		$Ids{$otu_name} = $id;
+		$Hierarchies{$otu_name} = $otu_hierarchy;
+		
+		# Populate the adjacency list for the given node (e.g. all of the lower taxonomy)
+		my $jnode = $name_list[$i+1] if ( $i+1 != scalar @name_list );
+		if ( $jnode )	{
+			$jnode =~ /([a-z])__(.*)/;
+			my ( $jotu_hierarchy, $jotu_name ) = ( uc $1, $2 );
+			if ( not grep { $jotu_name eq $_ } @{$Taxa{$otu_name}} )	{
+				push @{$Taxa{$otu_name}}, $jotu_name;
+			}
+		}
+	}
+}	
+close $fh if ( $succin );
+
+# Now, do a DFS over the taxonomic adjacency list
+my @taxa = @{DFS( "root" )};
+
+foreach my $otu ( @taxa )	{
+	
+	# Set the hierarchy for quick lookups
+	my $hier = $Hierarchies{$otu};
+	
+	# Sum the number of reads rooted at this clade
+	# Still working on this part :)
+	my $total_reads_rooted = "--";
+	
+	# Re-compute the proportion of reads mapping 
+	my $rel_ab = 100*($Reads{$otu} / $Reads{"all"});
+
+	# Print the entry back out in Kraken2 format
+	print $fhout " ", join("\t", sprintf("%3.2f", $rel_ab), $total_reads_rooted, $Reads{$otu}, $hier, $Ids{$otu}), "\t", " " x $Spaces{$hier}, $otu, "\n";
+}
+close $fhout if ( $succout );
+
+exit;
+
+################################# SUBROUTINES #################################################
+
+# Depth-first search of the adjacency list
+# Returns an array reference containing either the pre- or post-ordered names of the nodes (tree-edges only, not cross/forward/back edges)
+sub DFS		{
+	my ( $src ) = @_;
+	my @queue = ($src);
+	my %Seen = ();
+	my @order;
+	my @visited_children = ($src);
+	
+	while( scalar( @queue ) > 0 )	{
+		my $vertex = pop( @queue ); 
+		push @order, $vertex if ( not exists($Seen{$vertex}) );		
+		my @neighbors = @{ $Taxa{$vertex} } if ( $Taxa{$vertex} );
+		
+		# Add the neighbors to the queue and update some information about the current node
+		foreach my $child ( @neighbors )	{
+			push @visited_children, $child;
+			if ( exists $Seen{$child} )	{
+				next;
+			}
+			push @queue, $child;
+		}
+		
+		# Add the current vertex to %Seen
+		$Seen{$vertex} = 1;
+	}
+	
+	# Return the ordering requested --> note: currently only produces a pre-order traversal.
+	return \@order; 			
+}
