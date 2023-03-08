@@ -9,7 +9,7 @@ class WorkflowMetaxplore {
     //
     // Check and validate parameters
     //
-    public static void initialise(params, log) {
+    public static void initialise(params, log, valid_params) {
         
         if (!params.db) {
             log.error "Classification database not specified with e.g. '--db kraken2_db' or via a detectable config file."
@@ -66,4 +66,5 @@ class WorkflowMetaxplore {
         def description_html = engine.createTemplate(methods_text).make(meta)
 
         return description_html
-    }}
+    }
+}

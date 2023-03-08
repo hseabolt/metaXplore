@@ -18,12 +18,13 @@ process MPA2KRAKEN {
 
     script: // This script is packaged alongside the MetaXplore workflow
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def VERSION = '0.1.0'  // WARN: Increment this version number when using a newer version of this binary
     """
     mpa2kraken --input ${mpa_report} --output ${meta.id}.kraken2.report.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        map2kraken: \$(echo \$(mpa2kraken --version 2>&1) | cut -f2 | sed '/v//')
+        mpa2kraken: $VERSION
     END_VERSIONS
     """
 }

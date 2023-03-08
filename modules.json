@@ -40,14 +40,14 @@
                             "modules"
                         ]
                     },
-                    "kraken2/kraken2": {
+                    "krakentools/combinekreports": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
                         "installed_by": [
                             "modules"
                         ]
                     },
-                    "krakentools/combinekreports": {
+                    "krakentools/kreport2krona": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
                         "installed_by": [

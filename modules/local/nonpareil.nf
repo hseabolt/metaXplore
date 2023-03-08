@@ -28,7 +28,7 @@ process NONPAREIL {
     def input_data  = ("$reads".contains("fastq")) && !meta.single_end ? "${reads[0]}" : "$reads"
     """
     if [ "${input_type}" == "fastq" ]; then
-        $cmd ${input_data} | paste - - - - | awk 'BEGIN { FS="\t" } { print ">"substr(\$1,2)"\n"\$2}' > reads.fasta
+        $cmd ${input_data} | paste - - - - | awk 'BEGIN { FS="\\t" } { print ">"substr(\$1,2)"\\n"\$2}' > reads.fasta
     else 
         $cmd ${input_data} > reads.fasta
     fi
