@@ -12,6 +12,7 @@ process MPA2KRAKEN {
 
     output:
     tuple val(meta), path("*.kraken2.report.txt")      , emit: report
+    tuple val(meta), path("*.krona.report.txt")        , emit: results_for_krona
     path "versions.yml"                                , emit: versions
 
     when:
@@ -21,7 +22,7 @@ process MPA2KRAKEN {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def VERSION = '0.1.0'  // WARN: Increment this version number when using a newer version of this binary
     """
-    mpa2kraken --input ${mpa_report} --output ${meta.id}.kraken2.report.txt
+    mpa2kraken --input ${mpa_report} --output ${meta.id}.kraken2.report.txt --krona ${meta.id}.krona.report.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

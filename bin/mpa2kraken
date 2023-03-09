@@ -44,6 +44,7 @@ use Data::Dumper;
 # Required input parameters
 my $input = "--";
 my $output = "--";
+my $krona;
 my $version;
 my $help;
 
@@ -56,6 +57,7 @@ sub usage {
 	INPUT/OUTPUT:
 	-i | --input		STR; input filename, expecting MetaPhlAn3 format (can be from -t rel_ab or rel_ab_w_read_counts)
 	-o | --output		STR; output filename
+	-k | --krona        (Optional) STR; output filename formatted for Krona
 	-v | --version	 	Print version number and exit.
 	-h | --help		Print this help message and exit.
 	
@@ -65,6 +67,7 @@ sub usage {
 
 GetOptions(	'input|i=s'    => \$input,
 			'output|o=s'    => \$output,
+			'krona|k=s'  => \$krona,
 			'version|v'  => \$version,
 			'help|h'     => \$help,
 ) or die usage();
@@ -87,6 +90,7 @@ my $succout = open( OUT, ">", "$output" ) if $output ne "--";
 my $fhout;
 if ( $succout )		{	$fhout = *OUT;		}
 else				{	$fhout = *STDOUT;	}
+open(KRONA, ">", "$krona" ) if ( $krona );	
 
 ##################################################################################
 # Parse the data and concurrently write out the line in Kraken2 format
@@ -206,8 +210,12 @@ foreach my $otu ( @taxa )	{
 
 	# Print the entry back out in Kraken2 format
 	print $fhout " ", join("\t", sprintf("%3.2f", $rel_ab), $total_reads_rooted, $Reads{$otu}, $hier, $Ids{$otu}), "\t", " " x $Spaces{$hier}, $otu, "\n";
+
+	# If we are also generating a Krona-compatible report:
+	print KRONA join("\t", $otu, $Ids{$otu}), "\n";
 }
 close $fhout if ( $succout );
+close KRONA if ( $krona );
 
 exit;
 

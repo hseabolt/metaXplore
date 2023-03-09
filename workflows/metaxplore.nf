@@ -50,7 +50,6 @@ include { KRAKEN2                                            } from '../modules/
 include { BRACKEN_BRACKEN as BRACKEN                         } from '../modules/nf-core/bracken/bracken/main'
 include { FASTP                                              } from '../modules/nf-core/fastp/main'
 include { KRAKENTOOLS_COMBINEKREPORTS as COMBINEKREPORTS     } from '../modules/nf-core/krakentools/combinekreports/main'
-include { KRAKENTOOLS_KREPORT2KRONA as KREPORT2KRONA         } from '../modules/nf-core/krakentools/kreport2krona/main'
 include { METAPHLAN4_METAPHLAN4 as METAPHLAN4                } from '../modules/local/metaphlan4'
 include { METAPHLAN3_MERGEMETAPHLANTABLES as MERGEMPATABLES  } from '../modules/nf-core/metaphlan3/mergemetaphlantables/main'
 include { MPA2KRAKEN                                         } from '../modules/local/mpa2kraken'
@@ -172,11 +171,8 @@ workflow METAXPLORE {
             ch_profiles
         )
         ch_mpa_profiles = ch_mpa_profiles.mix(MPA2KRAKEN.out.report)
-        KREPORT2KRONA (
-            MPA2KRAKEN.out.report
-        )
         ch_versions = ch_versions.mix(MPA2KRAKEN.out.versions)
-        ch_results_for_krona = ch_results_for_krona.mix(KREPORT2KRONA.out.txt)
+        ch_results_for_krona = ch_results_for_krona.mix(MPA2KRAKEN.out.results_for_krona)
     } else {
         KRAKEN2_DB_PREPARATION (
             ch_kraken2_db
