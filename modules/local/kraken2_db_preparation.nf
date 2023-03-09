@@ -18,8 +18,8 @@ process KRAKEN2_DB_PREPARATION {
     script:
     """
     mkdir database
-    if [ -d "${db}" ]; then 
-        ln -s ${db}/*.k2d database/ 
+    if [ -d "\$(realpath ${db})" ]; then 
+        ln -s \$(realpath ${db})/*.k2d database/ 
     else
         mkdir db_tmp
         tar -xf "${db}" -C db_tmp

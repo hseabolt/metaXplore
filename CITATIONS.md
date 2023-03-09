@@ -15,6 +15,26 @@
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
   > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
 
+- [FASTP](https://academic.oup.com/bioinformatics/article/34/17/i884/5093234)
+  > Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics, 34(17), i884-i890.
+
+- [Nonpareil3](https://journals.asm.org/doi/full/10.1128/mSystems.00039-18)
+  > Rodriguez-R, L. M., Gunturu, S., Tiedje, J. M., Cole, J. R., & Konstantinidis, K. T. (2018). Nonpareil 3: fast estimation of metagenomic coverage and sequence diversity. MSystems, 3(3), e00039-18.
+  
+- [Kraken2](https://link.springer.com/article/10.1186/s13059-019-1891-0)
+  > Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome biology, 20, 1-13.
+  
+- [Bracken](https://peerj.com/articles/cs-104/)
+  > Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ Computer Science, 3, e104.
+
+- [KrakenTools](https://github.com/jenniferlu717/KrakenTools)
+
+- [MetaPhlAn 4](https://www.nature.com/articles/s41587-023-01688-w)
+  > Blanco-Míguez A, Beghini F, Cumbo F, McIver LJ, Thompson KN, Zolfo M, Manghi P, Dubois L, Huang KD, Thomas AM, & Segata N. (2023). Extending and improving metagenomic taxonomic profiling with uncharacterized species using MetaPhlAn 4. Nature Biotechnology, 1-12.
+
+- [Krona](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-12-385)
+  > Ondov, B. D., Bergman, N. H., & Phillippy, A. M. (2011). Interactive metagenomic visualization in a Web browser. BMC bioinformatics, 12(1), 1-10.
+
 ## Software packaging/containerisation tools
 
 - [Anaconda](https://anaconda.com)

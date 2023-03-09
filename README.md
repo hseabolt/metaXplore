@@ -1,21 +1,23 @@
+# ![hseabolt/metaXplore](docs/images/metaxplore_logo_light.png#gh-light-mode-only)
+
 ## Introduction
 
-**hseabolt/metaxplore** is a modular bioinformatics pipeline to conduct basic, rapid data exploration of metagenomic sequencing data at a glance.
+**metaXplore** is a modular bioinformatics pipeline to conduct basic, rapid data exploration of metagenomic sequencing data at a glance.
 
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It uses Docker/Singularity containers making installation trivial and results highly reproducible. The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. Where possible, these processes have been installed from [nf-core/modules](https://github.com/nf-core/modules).
 On release, automated continuous integration tests run the pipeline on a full-sized dataset on the AWS cloud infrastructure. This ensures that the pipeline runs on AWS, has sensible resource allocation defaults set to run on real-world datasets, and permits the persistent storage of results to benchmark between pipeline releases and other analysis sources.
 
 ## Pipeline summary
 
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->
 
 1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
 2. Trim/QC raw reads with Fastp ([`Fastp`](https://github.com/OpenGene/fastp))
 3. Estimate metagenome coverage and diversity with Nonpareil ([`Nonpareil`](https://nonpareil.readthedocs.io/en/latest/redundancy.html))
 4. Classify QC'd reads with classifier of your choice (curently either ([`Kraken2`](https://github.com/DerrickWood/kraken2)) or ([`Metaphlan3`](https://github.com/biobakery/MetaPhlAn)).  Kraken2 classifications can be further refined with ([`Bracken`](https://ccb.jhu.edu/software/bracken/)))
-5. Compute relative abundance profiles
-6. Visualize taxonomic profiles using ([`Krona`](https://github.com/marbl/Krona))
-7. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+5. Visualize taxonomic profiles using ([`Krona`](https://github.com/marbl/Krona))
+6. Present QC and stats for reads and taxonomic profiles ([`MultiQC`](http://multiqc.info/))
+
+__Please note that inclusion of Bracken is still a work-in-progress.  Use it at your discretion.  Kraken2 and Metaphlan tracks should work out of the box.__
 
 ## Quick Start
 
@@ -39,23 +41,20 @@ On release, automated continuous integration tests run the pipeline on a full-si
 4. Start running your own analysis!
 
    ```bash
-   nextflow run hseabolt/metaxplore --input samplesheet.csv --outdir <OUTDIR> --classifier kraken2 --db <DB> -profile <docker/singularity/podman/shifter/charliecloud/conda/institute>
+   nextflow run hseabolt/metaxplore --input samplesheet.csv --outdir <OUTDIR> --classifier <kraken2|metaphlan4> --db <DB> -profile <docker/singularity/podman/shifter/charliecloud/conda/institute>
    ```
 
 ## Credits
 
-hseabolt/metaxplore was originally written by Matthew H. Seabolt (Github: @hseabolt).
+metaXplore was originally written by Matthew H. Seabolt (Github: @hseabolt).
 
 ## Contributions and Support
 
-If you would like to contribute to this pipeline, please see the [contributing guidelines](.github/CONTRIBUTING.md).
+I welcome collaborative contributions and suggestions to expand the utility of this workflow, which will be explored on as-available basis.
 
 ## Citations
 
-<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
-<!-- If you use  hseabolt/metaxplore for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
-
-<!-- TODO nf-core: Add bibliography of tools and data used in your pipeline -->
+If you use  hseabolt/metaxplore for your analysis, please cite it using the following doi: [10.5281/zenodo.1400710](https://doi.org/10.5281/zenodo.1400710)
 
 An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
 

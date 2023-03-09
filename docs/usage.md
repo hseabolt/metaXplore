@@ -4,7 +4,7 @@
 
 ## Introduction
 
-<!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+MetaXplore was created with the idea to have a push-button way to review initial data quality and taxonomic profile of input metagenomes prior to downstream processing or analysis.
 
 ## Samplesheet input
 
@@ -55,10 +55,10 @@ An [example samplesheet](../assets/samplesheet.csv) has been provided with the p
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run hseabolt/metaxplore --input samplesheet.csv --outdir <OUTDIR> --genome GRCh37 -profile docker
+nextflow run hseabolt/metaxplore --input samplesheet.csv --outdir <OUTDIR> --classifier <kraken2|metaphlan4> --db <DB> -profile singularity
 ```
 
-This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
+This will launch the pipeline with the `singularity` configuration profile. See below for more information about profiles.
 
 Note that the pipeline will create the following files in your working directory:
 
