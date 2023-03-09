@@ -1,5 +1,7 @@
 // Credit: nf-core/mag
 process KRAKEN2_DB_PREPARATION {
+    tag "${db.simpleName}"
+    label 'process_low'
 
     conda "conda-forge::sed=4.7"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -15,10 +17,15 @@ process KRAKEN2_DB_PREPARATION {
 
     script:
     """
-    mkdir db_tmp
-    tar -xf "${db}" -C db_tmp
     mkdir database
-    mv `find db_tmp/ -name "*.k2d"` database/
+    if [ -d "${db}" ]; then 
+        ln -s ${db}/*.k2d database/ 
+    else
+        mkdir db_tmp
+        tar -xf "${db}" -C db_tmp
+        mv `find db_tmp/ -name "*.k2d"` database/
+    fi    
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         tar: \$(tar --version 2>&1 | sed -n 1p | sed 's/tar (GNU tar) //')

@@ -10,3 +10,11 @@ report_section_order:
     order: -1002
 
 export_plots: true
+
+custom_data:
+  Nonpareil:
+    section_name: "Nonpareil"
+sp:
+  Nonpareil:
+    fn: "*.png"
+ignore_images: false

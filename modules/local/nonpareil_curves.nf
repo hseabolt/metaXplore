@@ -10,7 +10,7 @@ process NONPAREIL_CURVES {
     path(samplesheet)
 
     output:
-	path("*.tif")              , emit: tif
+	path("*.png")              , emit: png
 	
     when:
     task.ext.when == null || task.ext.when
@@ -23,7 +23,7 @@ process NONPAREIL_CURVES {
     library(Nonpareil)
     samples <- as.data.frame(read.table("${samplesheet}", sep="\\t", header=FALSE, as.is=TRUE))
     colnames(samples) <- c("File", "Name", "Col")
-    img <- tiff(file="${prefix}.tif", res=300, compression="lzw", height=2250, width=3000)
+    img <- png(file="${prefix}_mqc.png", res=300, height=2250, width=3000)
     attach(samples)
     nps <- Nonpareil.set(File, col=Col, labels=Name, plot.opts=list(plot.observed=FALSE))
     detach(samples)

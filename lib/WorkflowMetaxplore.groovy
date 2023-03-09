@@ -22,6 +22,13 @@ class WorkflowMetaxplore {
             System.exit(1)
         }
 
+        // Check that the user specified a valid classification software
+        if (valid_params['classifier'] == 'metaphlan4' && !valid_params['index']) {
+            log.error "'--index' parameter required when using '--classifier metaphlan4'."
+            System.exit(1)
+        }
+
+
     }
 
     //

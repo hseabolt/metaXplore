@@ -134,11 +134,11 @@ while ( <$fh> )	{
 	}
 	
 	# Special case: the UNKNOWN (unclassified) line, which *should* be the first line of data
-	if ( $otu[0] =~ /^UNKNOWN/ || $otu[0] =~ /^unclassified/ )	{
+	if ( $otu[0] =~ /^UNKNOWN/i || $otu[0] =~ /^unclassified/i )	{
 		
 		# Update the total reads variable
 		$Reads{"all"} = $total_reads_mapped + $total_reads_at_clade;
-		
+
 		# Print the unclassified line
 		$rel_ab = 100*($total_reads_at_clade / $Reads{"all"});
 		print $fhout " ", join("\t", sprintf("%3.2f", $rel_ab), $total_reads_at_clade, $total_reads_at_clade, $hierarchy, $taxid, $name), "\n";
@@ -198,8 +198,8 @@ foreach my $otu ( @taxa )	{
 	my $hier = $Hierarchies{$otu};
 	
 	# Sum the number of reads rooted at this clade
-	# Still working on this part :)
-	my $total_reads_rooted = "--";
+	# Still working on this part :) --> for workaround compatibility with other softwares, using the OTU read counts here as placeholder.
+	my $total_reads_rooted = $Reads{$otu};
 	
 	# Re-compute the proportion of reads mapping 
 	my $rel_ab = 100*($Reads{$otu} / $Reads{"all"});

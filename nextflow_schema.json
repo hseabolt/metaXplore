@@ -35,12 +35,17 @@
                 "db": {
                     "type": "string",
                     "format": "directory-path",
-                    "description": "Path to valid taxonomic classification database. You have to use absolute paths to storage on Cloud infrastructure.",
+                    "description": "Path to valid taxonomic classification database directory. You have to use absolute paths to storage on Cloud infrastructure.",
                     "fa_icon": "fas fa-folder-open"
                 },
                 "classifier": {
                     "type": "string",
-                    "description": "Classification software to use: either 'kraken2' or 'metaphlan3'.",
+                    "description": "Classification software to use: either 'kraken2' or 'metaphlan4'.",
+                    "fa_icon": "fas fa-folder-open"
+                },
+                "index": {
+                    "type": "string",
+                    "description": "Name of Metaphlan3 database index, e.g. 'mpa_v30_CHOCOPhlAn_201901'.  Required if using --classifier metaphlan4.",
                     "fa_icon": "fas fa-folder-open"
                 },
                 "use_bracken": {

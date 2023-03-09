@@ -5,7 +5,7 @@
 */
 
 def valid_params = [
-    classifier       : ['kraken2', 'metaphlan3']
+    classifier       : ['kraken2', 'metaphlan4']
 ]
 
 // Validate input parameters
@@ -41,6 +41,7 @@ include { INPUT_CHECK                                        } from '../subworkf
 
 // MODULES
 include { FASTQC                                             } from '../modules/nf-core/fastqc/main'
+include { FASTQC as FASTQC_TRIMMED                           } from '../modules/nf-core/fastqc/main'
 include { BOWTIE2_REMOVAL_ALIGN                              } from '../modules/local/bowtie2_removal_align'
 include { BOWTIE2_REMOVAL_BUILD                              } from '../modules/local/bowtie2_removal_build'
 include { MULTIQC                                            } from '../modules/nf-core/multiqc/main'
@@ -49,9 +50,11 @@ include { KRAKEN2                                            } from '../modules/
 include { BRACKEN_BRACKEN as BRACKEN                         } from '../modules/nf-core/bracken/bracken/main'
 include { FASTP                                              } from '../modules/nf-core/fastp/main'
 include { KRAKENTOOLS_COMBINEKREPORTS as COMBINEKREPORTS     } from '../modules/nf-core/krakentools/combinekreports/main'
-include { METAPHLAN3_METAPHLAN3 as METAPHLAN3                } from '../modules/nf-core/metaphlan3/metaphlan3/main'
+include { KRAKENTOOLS_KREPORT2KRONA as KREPORT2KRONA         } from '../modules/nf-core/krakentools/kreport2krona/main'
+include { METAPHLAN4_METAPHLAN4 as METAPHLAN4                } from '../modules/local/metaphlan4'
 include { METAPHLAN3_MERGEMETAPHLANTABLES as MERGEMPATABLES  } from '../modules/nf-core/metaphlan3/mergemetaphlantables/main'
 include { MPA2KRAKEN                                         } from '../modules/local/mpa2kraken'
+include { MERGE_KRAKEN_TABLES                                } from '../modules/local/merge_kraken_tables'
 include { NONPAREIL                                          } from '../modules/local/nonpareil'
 include { CREATE_NONPAREIL_SAMPLESHEET                       } from '../modules/local/create_nonpareil_samplesheet'
 include { NONPAREIL_CURVES                                   } from '../modules/local/nonpareil_curves'
@@ -116,12 +119,18 @@ workflow METAXPLORE {
     //
     ch_reads_for_np       = Channel.empty()
     ch_reads_for_taxonomy = Channel.empty()
+    ch_trimmed_reads      = Channel.empty()
     FASTP (
         ch_reads, [], false, false
     )
     ch_versions = ch_versions.mix(FASTP.out.versions)
     ch_reads_for_np       = ch_reads_for_np.mix(FASTP.out.reads)
     ch_reads_for_taxonomy = ch_reads_for_taxonomy.mix(FASTP.out.reads)
+    ch_trimmed_reads      = ch_trimmed_reads.mix(FASTP.out.reads)
+
+    FASTQC_TRIMMED (
+        ch_trimmed_reads
+    )
 
     // Estimate metagenome coverage and diversity with Nonpariel module
     NONPAREIL (
@@ -142,12 +151,13 @@ workflow METAXPLORE {
     ch_profiles          = Channel.empty()
     ch_combined_report   = Channel.empty()
     ch_results_for_krona = Channel.empty()
-    if ( params.classifier == 'metaphlan3' ) {
-        METAPHLAN3 (
+    ch_mpa_profiles      = Channel.empty()
+    if ( params.classifier == 'metaphlan4' ) {
+        METAPHLAN4 (
             ch_reads_for_taxonomy, params.db
         )
-        ch_versions = ch_versions.mix(METAPHLAN3.out.versions)
-        ch_profiles = ch_profiles.mix(METAPHLAN3.out.profile)
+        ch_versions = ch_versions.mix(METAPHLAN4.out.versions)
+        ch_profiles = ch_profiles.mix(METAPHLAN4.out.profile)
         
         // Merge MPA reports with utility program 
         ch_profiles.collect{meta, profile -> profile}.map{ profile -> [[id: "MPA_merged"], profile]}.set{ ch_merge_mpa }
@@ -157,14 +167,16 @@ workflow METAXPLORE {
         ch_versions = ch_versions.mix(MERGEMPATABLES.out.versions)
         ch_combined_report = ch_combined_report.mix(MERGEMPATABLES.out.txt)
 
-        // Transform the MPA report into a Kraken2-style report so we can visualize it with Pavian
+        // Transform the MPA report into a Kraken2-style report
         MPA2KRAKEN (
             ch_profiles
         )
+        ch_mpa_profiles = ch_mpa_profiles.mix(MPA2KRAKEN.out.report)
+        KREPORT2KRONA (
+            MPA2KRAKEN.out.report
+        )
         ch_versions = ch_versions.mix(MPA2KRAKEN.out.versions)
-        ch_combined_report = MPA2KRAKEN.out.report
-
-
+        ch_results_for_krona = ch_results_for_krona.mix(KREPORT2KRONA.out.txt)
     } else {
         KRAKEN2_DB_PREPARATION (
             ch_kraken2_db
@@ -176,6 +188,7 @@ workflow METAXPLORE {
         ch_profiles = ch_profiles.mix(KRAKEN2.out.report)
         ch_results_for_krona = ch_results_for_krona.mix(KRAKEN2.out.results_for_krona)
         
+        // WARN: Bracken implementation here is experimental/under construction!
         if ( params.use_bracken ) {
             BRACKEN(
                 ch_profiles, params.bracken_db
@@ -221,6 +234,12 @@ workflow METAXPLORE {
     ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description.collectFile(name: 'methods_description_mqc.yaml'))
     ch_multiqc_files = ch_multiqc_files.mix(CUSTOM_DUMPSOFTWAREVERSIONS.out.mqc_yml.collect())
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(FASTP.out.json.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQC_TRIMMED.out.zip.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_profiles.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_mpa_profiles.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(KRONA.out.html.collect())
+    ch_multiqc_files = ch_multiqc_files.mix(NONPAREIL_CURVES.out.png.collect())
 
     MULTIQC (
         ch_multiqc_files.collect(),
@@ -229,7 +248,6 @@ workflow METAXPLORE {
         ch_multiqc_logo.toList()
     )
     multiqc_report = MULTIQC.out.report.toList()
-
 }
 
 /*

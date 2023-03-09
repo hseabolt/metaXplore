@@ -2,6 +2,7 @@
 process KRAKEN2 {
     tag "${meta.id}-${db_name}"
     label 'process_high'
+    label 'process_high_memory'
 
     conda "bioconda::kraken2=2.0.8_beta"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
