@@ -12,9 +12,9 @@ report_section_order:
 export_plots: true
 
 custom_data:
-  Nonpareil:
-    section_name: "Nonpareil"
+  Results:
+    section_name: "Results"
 sp:
-  Nonpareil:
+  Results:
     fn: "*.png"
 ignore_images: false

@@ -16,8 +16,9 @@ process KRONA {
     path "versions.yml" , emit: versions
 
     script:
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    ktImportTaxonomy "$report" -tax taxonomy
+    ktImportTaxonomy "$report" -tax taxonomy -o ${prefix}_Krona_mqc.html
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         ktImportTaxonomy: \$(ktImportTaxonomy 2>&1 | sed -n '/KronaTools /p' | sed 's/^.*KronaTools //; s/ - ktImportTaxonomy.*//')

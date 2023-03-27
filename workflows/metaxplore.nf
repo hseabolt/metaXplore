@@ -44,10 +44,19 @@ include { FASTQC                                             } from '../modules/
 include { FASTQC as FASTQC_TRIMMED                           } from '../modules/nf-core/fastqc/main'
 include { BOWTIE2_REMOVAL_ALIGN                              } from '../modules/local/bowtie2_removal_align'
 include { BOWTIE2_REMOVAL_BUILD                              } from '../modules/local/bowtie2_removal_build'
+include { MINIMAP2_ALIGN                                     } from '../modules/nf-core/minimap2/align/main'
+include { SAMTOOLS_INDEX                                     } from '../modules/nf-core/samtools/index/main'
+include { SAMTOOLS_STATS                                     } from '../modules/nf-core/samtools/stats/main'
+include { SAMTOOLS_COVERAGE                                  } from '../modules/nf-core/samtools/coverage/main'
 include { MULTIQC                                            } from '../modules/nf-core/multiqc/main'
 include { KRAKEN2_DB_PREPARATION                             } from '../modules/local/kraken2_db_preparation'
 include { KRAKEN2                                            } from '../modules/local/kraken2'
 include { BRACKEN_BRACKEN as BRACKEN                         } from '../modules/nf-core/bracken/bracken/main'
+include { MASHTREE                                           } from '../modules/nf-core/mashtree/main'
+include { HEATMAP                                            } from '../modules/local/heatmap'
+include { FQ2FA                                              } from '../modules/local/fq2fa'
+include { CAT_CAT as CAT                                     } from '../modules/nf-core/cat/cat/main'
+include { SORT                                               } from '../modules/local/sort'
 include { FASTP                                              } from '../modules/nf-core/fastp/main'
 include { KRAKENTOOLS_COMBINEKREPORTS as COMBINEKREPORTS     } from '../modules/nf-core/krakentools/combinekreports/main'
 include { METAPHLAN4_METAPHLAN4 as METAPHLAN4                } from '../modules/local/metaphlan4'
@@ -75,6 +84,7 @@ workflow METAXPLORE {
     ch_versions = Channel.empty()
     ch_reads    = Channel.empty()
     ch_host_fasta = params.host_fasta ? Channel.value(file( "${params.host_fasta}" )) : Channel.empty()
+    ch_target_genome = params.target_genome ? Channel.value(file( "${params.target_genome}" )) : Channel.empty()
     ch_kraken2_db = ( params.db && params.classifier == 'kraken2' ) ? Channel.value(file( "${params.db}" )) : Channel.empty()
 
     //
@@ -131,6 +141,35 @@ workflow METAXPLORE {
         ch_trimmed_reads
     )
 
+    // Map reads against a target genome if a target is provided, and compute some stats from this file
+     ch_coverage = Channel.empty()
+    if ( params.target_genome ) {
+        MINIMAP2_ALIGN (
+            ch_trimmed_reads, ch_target_genome, true, false, false
+        )
+        SAMTOOLS_INDEX (
+            MINIMAP2_ALIGN.out.bam
+        )
+        ch_bam = MINIMAP2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.bai)
+        SAMTOOLS_STATS (
+            ch_bam, ch_target_genome
+        )
+        SAMTOOLS_COVERAGE (
+            ch_bam
+        )
+        SAMTOOLS_COVERAGE.out.for_cat
+            .collect{meta, tsv -> tsv}
+            .map{ tsv -> [[id: "Coverage"], tsv]}
+            .set{ ch_for_cat }
+        CAT (
+            ch_for_cat
+        )
+        SORT (
+            CAT.out.file_out
+        )
+        ch_coverage = ch_coverage.mix(SORT.out.file_out)
+    }
+
     // Estimate metagenome coverage and diversity with Nonpariel module
     NONPAREIL (
         ch_reads_for_np
@@ -142,6 +181,23 @@ workflow METAXPLORE {
     ch_np_samplesheet = CREATE_NONPAREIL_SAMPLESHEET.out.samplesheet.collectFile(name: 'np.samplesheet.txt', newLine: true)
     NONPAREIL_CURVES (
         ch_np_samplesheet
+    )
+
+    // Estimate overall Jaccard-MinHash similarity between metagenomes with MashTree
+    // TODO: set up logical handling to compute mashtree distances only if we have more than 1 sample
+    FQ2FA (
+        ch_trimmed_reads
+    )
+    FQ2FA.out.fasta
+        .collect{meta, reads -> reads}
+        .map{ reads -> [[id: "mashtree"], reads]}
+        .set{ ch_mashtree }
+    MASHTREE (
+        ch_mashtree
+    )
+    // Plot a heatmap for MultiQC of pairwise Mash distances
+    HEATMAP (
+        MASHTREE.out.matrix
     )
 
     //
@@ -233,8 +289,10 @@ workflow METAXPLORE {
     ch_multiqc_files = ch_multiqc_files.mix(FASTP.out.json.collect{it[1]}.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC_TRIMMED.out.zip.collect{it[1]}.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(ch_profiles.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_coverage.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(HEATMAP.out.heatmap.collect{it[1]}.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(ch_mpa_profiles.collect{it[1]}.ifEmpty([]))
-    ch_multiqc_files = ch_multiqc_files.mix(KRONA.out.html.collect())
     ch_multiqc_files = ch_multiqc_files.mix(NONPAREIL_CURVES.out.png.collect())
 
     MULTIQC (

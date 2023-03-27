@@ -45,7 +45,7 @@
                 },
                 "index": {
                     "type": "string",
-                    "description": "Name of Metaphlan3 database index, e.g. 'mpa_v30_CHOCOPhlAn_201901'.  Required if using --classifier metaphlan4.",
+                    "description": "Name of Metaphlan database index, e.g. 'mpa_v30_CHOCOPhlAn_201901'.  Required if using --classifier metaphlan4.",
                     "fa_icon": "fas fa-folder-open"
                 },
                 "use_bracken": {
@@ -63,6 +63,12 @@
                     "type": "string",
                     "format": "directory-path",
                     "description": "Path to FASTA assembly of the host genome. You have to use absolute paths to storage on Cloud infrastructure.",
+                    "fa_icon": "fas fa-folder-open"
+                },
+                "target_genome": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Path to FASTA assembly of a target genome of interest. You have to use absolute paths to storage on Cloud infrastructure.",
                     "fa_icon": "fas fa-folder-open"
                 },
                 "email": {
